@@ -31,12 +31,16 @@ export const useOllamaChat = () => {
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
     
+    let assistantMessage: ChatMessage | null = null;
+    
     try {
       // Test connection first
+      console.log('Testing Ollama connection...');
       const isConnected = await ollamaService.testConnection();
       if (!isConnected) {
         throw new Error('Cannot connect to Ollama. Please ensure it is running on http://localhost:11434');
       }
+      console.log('Ollama connection successful');
 
       const conversationMessages = [...messages, userMessage].map(msg => ({
         role: msg.role,
@@ -44,7 +48,7 @@ export const useOllamaChat = () => {
       }));
 
       let assistantResponse = '';
-      const assistantMessage: ChatMessage = {
+      assistantMessage = {
         id: generateId(),
         role: 'assistant',
         content: '',
@@ -53,15 +57,17 @@ export const useOllamaChat = () => {
 
       // Add the assistant message immediately for streaming
       setMessages(prev => [...prev, assistantMessage]);
+      console.log('Starting stream with assistant message ID:', assistantMessage.id);
 
       // Stream the response
+      console.log('Starting to stream response...');
       for await (const chunk of ollamaService.streamGenerate(
         conversationMessages,
         (accumulatedContent) => {
           // Update the assistant message content as it streams
           setMessages(prev => 
             prev.map(msg => 
-              msg.id === assistantMessage.id 
+              msg.id === assistantMessage!.id 
                 ? { ...msg, content: accumulatedContent }
                 : msg
             )
@@ -71,6 +77,7 @@ export const useOllamaChat = () => {
       )) {
         // The streaming is handled by the onUpdate callback above
       }
+      console.log('Streaming completed. Final response:', assistantResponse);
 
       // Check if the response contains SRS content and extract it
       const srsMatch = assistantResponse.match(/```markdown\n([\s\S]*?)\n```/) || 
@@ -102,7 +109,9 @@ export const useOllamaChat = () => {
       });
 
       // Remove the empty assistant message if there was an error
-      setMessages(prev => prev.filter(msg => msg.id !== messages.length.toString()));
+      if (assistantMessage) {
+        setMessages(prev => prev.filter(msg => msg.id !== assistantMessage!.id));
+      }
     } finally {
       setIsLoading(false);
     }
