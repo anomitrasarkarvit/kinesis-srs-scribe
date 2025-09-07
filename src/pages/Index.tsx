@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { ChatPanel } from '@/components/ChatPanel';
 import { SRSPreview } from '@/components/SRSPreview';
+import { OllamaSettings } from '@/components/OllamaSettings';
 import { useOllamaChat } from '@/hooks/useOllamaChat';
 import { exportService } from '@/services/exportService';
+import { ollamaService } from '@/services/ollamaService';
 import { Button } from '@/components/ui/button';
 import { RotateCcw, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -10,6 +12,14 @@ import { useToast } from '@/hooks/use-toast';
 const Index = () => {
   const { messages, isLoading, srsContent, isUpdatingSRS, sendMessage, updateSRS, resetConversation } = useOllamaChat();
   const { toast } = useToast();
+
+  // Initialize Ollama service from saved settings on mount
+  useEffect(() => {
+    const savedBase = localStorage.getItem('ollamaBaseURL');
+    const savedModel = localStorage.getItem('ollamaModel');
+    if (savedBase) (ollamaService as any).baseURL = savedBase;
+    if (savedModel) (ollamaService as any).model = savedModel;
+  }, []);
 
   const handleExport = async (format: 'md' | 'pdf') => {
     if (!srsContent) {
@@ -72,15 +82,18 @@ const Index = () => {
               </p>
             </div>
             
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleReset}
-              className="flex items-center space-x-2"
-            >
-              <RotateCcw className="h-4 w-4" />
-              <span>Reset Session</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <OllamaSettings />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReset}
+                className="flex items-center space-x-2"
+              >
+                <RotateCcw className="h-4 w-4" />
+                <span>Reset Session</span>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
