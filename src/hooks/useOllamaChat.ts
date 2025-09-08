@@ -34,6 +34,40 @@ export const useOllamaChat = () => {
   const sendMessage = useCallback(async (content: string) => {
     if (isLoading) return;
 
+    // Helper function to detect and update SRS content
+    const detectAndUpdateSRS = (content: string): boolean => {
+      const srsPatterns = [
+        /```(?:markdown|md)?\s*([\s\S]*?)\s*```/i,  // Markdown code blocks
+        /(# [^#\n]*(?:SRS|System Requirements|Requirements Specification|Project|System|Software)[\s\S]*)/i,  // SRS/Project headings
+        /(## [^#\n]*(?:Requirements|Specification|Overview|Introduction|System|Architecture)[\s\S]*)/i,  // Requirements sections
+        /^(# .*\n[\s\S]*)/m,  // Any document starting with H1
+      ];
+
+      let extractedSRS = '';
+      for (const pattern of srsPatterns) {
+        const match = content.match(pattern);
+        if (match) {
+          extractedSRS = (match[1] || match[0]).trim();
+          break;
+        }
+      }
+
+      if (extractedSRS && extractedSRS !== srsContent) {
+        setIsUpdatingSRS(true);
+        setSrsContent(extractedSRS);
+        setIsUpdatingSRS(false);
+        return true;
+      } else if (!extractedSRS && (content.includes('# ') || content.includes('## ')) && content !== srsContent) {
+        // Fallback: any structured markdown content
+        setIsUpdatingSRS(true);
+        setSrsContent(content.trim());
+        setIsUpdatingSRS(false);
+        return true;
+      }
+      
+      return false;
+    };
+
     const userMessage: ChatMessage = {
       id: generateId(),
       role: 'user',
@@ -85,6 +119,12 @@ export const useOllamaChat = () => {
                 : msg
             )
           );
+          
+          // Real-time SRS content detection during streaming
+          const shouldUpdateSRS = detectAndUpdateSRS(accumulatedContent);
+          if (shouldUpdateSRS) {
+            console.log('SRS content detected during streaming');
+          }
         }
       )) {
         // chunks handled in callback
@@ -92,33 +132,8 @@ export const useOllamaChat = () => {
 
       console.log('Streaming completed. Final response:', assistantResponse);
 
-      // Detect and extract SRS content with better patterns
-      const srsPatterns = [
-        /```(?:markdown)?\s*([\s\S]*?)\s*```/i,  // Markdown code blocks
-        /(# [^#\n]*(?:SRS|System Requirements|Requirements Specification)[\s\S]*)/i,  // SRS headings
-        /(# [^#\n]*(?:Project|System|Software)[\s\S]*)/i,  // Project/System docs
-        /(## [^#\n]*(?:Requirements|Specification|Overview)[\s\S]*)/i,  // Requirements sections
-      ];
-
-      let extractedSRS = '';
-      for (const pattern of srsPatterns) {
-        const match = assistantResponse.match(pattern);
-        if (match) {
-          extractedSRS = (match[1] || match[0]).trim();
-          break;
-        }
-      }
-
-      if (extractedSRS) {
-        setIsUpdatingSRS(true);
-        setSrsContent(extractedSRS);
-        setIsUpdatingSRS(false);
-      } else if (assistantResponse.includes('# ') || assistantResponse.includes('## ')) {
-        // Heuristic: looks like structured markdown
-        setIsUpdatingSRS(true);
-        setSrsContent(assistantResponse.trim());
-        setIsUpdatingSRS(false);
-      }
+      // Final SRS content detection
+      detectAndUpdateSRS(assistantResponse);
 
     } catch (error) {
       console.error('Ollama chat error:', error);
@@ -139,13 +154,14 @@ export const useOllamaChat = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, toast]);
+  }, [isLoading, toast, srsContent]);
 
   const updateSRS = useCallback((content: string) => {
     setIsUpdatingSRS(true);
     setSrsContent(content);
     setIsUpdatingSRS(false);
   }, []);
+
 
   const resetConversation = useCallback(() => {
     setMessages([]);
