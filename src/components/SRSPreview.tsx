@@ -133,7 +133,7 @@ Due to sensitive technical details, the following information is redacted:
       </CardHeader>
 
       <CardContent className="p-4 flex-1 flex flex-col">
-        <div className="prose prose-sm max-w-none prose-headings:text-foreground prose-a:text-foreground prose-strong:text-foreground prose-code:text-foreground flex-1 overflow-y-auto border border-border rounded-md p-4 bg-muted/50">
+        <div className="prose prose-sm max-w-none prose-headings:text-foreground prose-a:text-foreground prose-strong:text-foreground prose-code:text-foreground flex-1 overflow-y-auto scroll-smooth border border-border rounded-md p-4 bg-muted/50" style={{ maxHeight: 'calc(100vh - 300px)' }}>
           <ReactMarkdown
             components={{
               code({

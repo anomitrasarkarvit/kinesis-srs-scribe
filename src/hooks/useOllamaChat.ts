@@ -36,32 +36,16 @@ export const useOllamaChat = () => {
 
     // Helper function to detect and update SRS content
     const detectAndUpdateSRS = (content: string): boolean => {
-      const srsPatterns = [
-        /```(?:markdown|md)?\s*([\s\S]*?)\s*```/i,  // Markdown code blocks
-        /(# [^#\n]*(?:SRS|System Requirements|Requirements Specification|Project|System|Software)[\s\S]*)/i,  // SRS/Project headings
-        /(## [^#\n]*(?:Requirements|Specification|Overview|Introduction|System|Architecture)[\s\S]*)/i,  // Requirements sections
-        /^(# .*\n[\s\S]*)/m,  // Any document starting with H1
-      ];
-
-      let extractedSRS = '';
-      for (const pattern of srsPatterns) {
-        const match = content.match(pattern);
-        if (match) {
-          extractedSRS = (match[1] || match[0]).trim();
-          break;
-        }
-      }
-
-      if (extractedSRS && extractedSRS !== srsContent) {
+      console.log('Detecting SRS content from:', content.substring(0, 100) + '...');
+      
+      // If content is substantial (more than 50 chars) and different from current SRS, update it
+      const trimmedContent = content.trim();
+      
+      if (trimmedContent.length > 50 && trimmedContent !== srsContent) {
+        console.log('Updating SRS content with new response');
         setIsUpdatingSRS(true);
-        setSrsContent(extractedSRS);
-        setIsUpdatingSRS(false);
-        return true;
-      } else if (!extractedSRS && (content.includes('# ') || content.includes('## ')) && content !== srsContent) {
-        // Fallback: any structured markdown content
-        setIsUpdatingSRS(true);
-        setSrsContent(content.trim());
-        setIsUpdatingSRS(false);
+        setSrsContent(trimmedContent);
+        setTimeout(() => setIsUpdatingSRS(false), 100); // Brief delay to show updating state
         return true;
       }
       
