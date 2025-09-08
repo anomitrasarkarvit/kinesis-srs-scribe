@@ -12,10 +12,10 @@ export const OllamaSettings = () => {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [baseUrl, setBaseUrl] = useState(
-    (ollamaService as any).getBaseURL?.() || localStorage.getItem('ollamaBaseURL') || 'http://localhost:11434'
+    ollamaService.getBaseURL?.() || localStorage.getItem('ollamaBaseURL') || 'http://localhost:11434'
   );
   const [model, setModel] = useState(
-    (ollamaService as any).getModel?.() || localStorage.getItem('ollamaModel') || 'llama3.2'
+    ollamaService.getModel?.() || localStorage.getItem('ollamaModel') || 'llama3.2'
   );
   const [models, setModels] = useState<string[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
@@ -34,7 +34,7 @@ export const OllamaSettings = () => {
   const loadModels = async () => {
     try {
       setLoadingModels(true);
-      (ollamaService as any).baseURL = baseUrl;
+      ollamaService.setBaseURL(baseUrl);
       const list = await ollamaService.getAvailableModels();
       setModels(list);
       if (list.length === 0) {
@@ -58,10 +58,10 @@ export const OllamaSettings = () => {
   const testAndSave = async () => {
     try {
       setTesting(true);
-      (ollamaService as any).baseURL = baseUrl;
+      ollamaService.setBaseURL(baseUrl);
       const ok = await ollamaService.testConnection();
       if (!ok) throw new Error('Connection failed. Endpoint unreachable or blocked by CORS.');
-      (ollamaService as any).model = model;
+      ollamaService.setModel(model);
       localStorage.setItem('ollamaBaseURL', baseUrl);
       localStorage.setItem('ollamaModel', model);
       toast({ title: 'Connected', description: 'Settings saved.' });
@@ -134,7 +134,7 @@ export const OllamaSettings = () => {
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <Button variant="kinesis" onClick={testAndSave} disabled={testing}>
+          <Button onClick={testAndSave} disabled={testing}>
             {testing ? 'Testing…' : 'Test & Save'}
           </Button>
         </DialogFooter>

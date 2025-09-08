@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { ollamaService } from '@/services/ollamaService';
 import { useToast } from '@/hooks/use-toast';
 
@@ -16,7 +16,20 @@ export const useOllamaChat = () => {
   const [isUpdatingSRS, setIsUpdatingSRS] = useState(false);
   const { toast } = useToast();
 
-  const generateId = () => Math.random().toString(36).substring(2, 15);
+  // Ref to avoid stale closure issues
+  const messagesRef = useRef<ChatMessage[]>([]);
+  const updateMessages = (updater: (prev: ChatMessage[]) => ChatMessage[]) => {
+    setMessages(prev => {
+      const updated = updater(prev);
+      messagesRef.current = updated;
+      return updated;
+    });
+  };
+
+  const generateId = () =>
+    typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : Math.random().toString(36).substring(2, 15);
 
   const sendMessage = useCallback(async (content: string) => {
     if (isLoading) return;
@@ -28,21 +41,22 @@ export const useOllamaChat = () => {
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    updateMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
-    
+
     let assistantMessage: ChatMessage | null = null;
-    
+
     try {
-      // Test connection first
       console.log('Testing Ollama connection...');
       const isConnected = await ollamaService.testConnection();
       if (!isConnected) {
-        throw new Error('Cannot connect to Ollama. Please ensure it is running on http://localhost:11434');
+        throw new Error(
+          'Cannot connect to Ollama. Please ensure it is running on http://localhost:11434'
+        );
       }
       console.log('Ollama connection successful');
 
-      const conversationMessages = [...messages, userMessage].map(msg => ({
+      const conversationMessages = [...messagesRef.current, userMessage].map(msg => ({
         role: msg.role,
         content: msg.content,
       }));
@@ -55,76 +69,76 @@ export const useOllamaChat = () => {
         timestamp: new Date(),
       };
 
-      // Add the assistant message immediately for streaming
-      setMessages(prev => [...prev, assistantMessage]);
+      // Insert placeholder assistant message for streaming
+      updateMessages(prev => [...prev, assistantMessage]);
       console.log('Starting stream with assistant message ID:', assistantMessage.id);
 
-      // Stream the response
-      console.log('Starting to stream response...');
+      // Stream response
       for await (const chunk of ollamaService.streamGenerate(
         conversationMessages,
         (accumulatedContent) => {
-          // Update the assistant message content as it streams
-          setMessages(prev => 
-            prev.map(msg => 
-              msg.id === assistantMessage!.id 
+          assistantResponse = accumulatedContent;
+          updateMessages(prev =>
+            prev.map(msg =>
+              msg.id === assistantMessage!.id
                 ? { ...msg, content: accumulatedContent }
                 : msg
             )
           );
-          assistantResponse = accumulatedContent;
         }
       )) {
-        // The streaming is handled by the onUpdate callback above
+        // chunks handled in callback
       }
+
       console.log('Streaming completed. Final response:', assistantResponse);
 
-      // Check if the response contains SRS content and extract it
-      const srsMatch = assistantResponse.match(/```markdown\n([\s\S]*?)\n```/) || 
-                     assistantResponse.match(/# System Requirements Specification[\s\S]*/);
-      
+      // Detect and extract SRS content
+      const srsMatch =
+        assistantResponse.match(/```markdown\n([\s\S]*?)\n```/) ||
+        assistantResponse.match(/(# System Requirements Specification[\s\S]*)/i);
+
       if (srsMatch) {
         setIsUpdatingSRS(true);
         const extractedSRS = srsMatch[1] || srsMatch[0];
-        setSrsContent(extractedSRS);
-        setTimeout(() => setIsUpdatingSRS(false), 500); // Brief loading state
+        setSrsContent(extractedSRS.trim());
+        setIsUpdatingSRS(false);
       } else if (assistantResponse.includes('# ') || assistantResponse.includes('## ')) {
-        // If it looks like markdown content, treat it as SRS
+        // Heuristic: looks like markdown
         setIsUpdatingSRS(true);
-        setSrsContent(assistantResponse);
-        setTimeout(() => setIsUpdatingSRS(false), 500);
+        setSrsContent(assistantResponse.trim());
+        setIsUpdatingSRS(false);
       }
 
     } catch (error) {
       console.error('Ollama chat error:', error);
-      
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : 'Failed to communicate with Ollama';
+
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to communicate with Ollama';
 
       toast({
-        title: "Connection Error",
+        title: 'Chat Error',
         description: errorMessage,
-        variant: "destructive",
+        variant: 'destructive',
       });
 
-      // Remove the empty assistant message if there was an error
-      if (assistantMessage) {
-        setMessages(prev => prev.filter(msg => msg.id !== assistantMessage!.id));
+      // Keep partial assistant response if available
+      if (assistantMessage && !assistantMessage.content) {
+        updateMessages(prev => prev.filter(msg => msg.id !== assistantMessage!.id));
       }
     } finally {
       setIsLoading(false);
     }
-  }, [messages, isLoading, toast]);
+  }, [isLoading, toast]);
 
   const updateSRS = useCallback((content: string) => {
     setIsUpdatingSRS(true);
     setSrsContent(content);
-    setTimeout(() => setIsUpdatingSRS(false), 300);
+    setIsUpdatingSRS(false);
   }, []);
 
   const resetConversation = useCallback(() => {
     setMessages([]);
+    messagesRef.current = [];
     setSrsContent('');
     setIsUpdatingSRS(false);
   }, []);

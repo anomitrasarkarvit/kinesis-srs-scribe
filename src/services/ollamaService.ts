@@ -28,14 +28,14 @@ export class OllamaService {
     onUpdate?: (content: string) => void
   ): AsyncGenerator<string, void, unknown> {
     try {
-      const response = await fetch(`${this.baseURL}/api/generate`, {
+      const response = await fetch(`${this.baseURL}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           model: this.model,
-          prompt: this.formatMessages(messages),
+          messages: messages,
           stream: true,
           options: {
             temperature: 0.7,
@@ -98,39 +98,21 @@ export class OllamaService {
   }
 
   private formatMessages(messages: Array<{ role: string; content: string }>): string {
-    // Format messages for Llama 3.2 prompt structure
-    let prompt = "You are Kinesis, an AI assistant specialized in creating System Requirements Specifications (SRS) for aerospace and engineering projects. Your role is to:\n\n";
-    prompt += "1. Ask clarifying questions about mission objectives, technical requirements, and constraints\n";
-    prompt += "2. Generate comprehensive, well-structured SRS documents in Markdown format\n";
-    prompt += "3. Iterate on the SRS based on user feedback\n";
-    prompt += "4. Ensure all requirements are specific, measurable, and technically feasible\n\n";
-    
-    prompt += "When generating SRS content, use proper Markdown formatting with:\n";
-    prompt += "- Clear headings (# ## ###)\n";
-    prompt += "- Bulleted and numbered lists\n";
-    prompt += "- Tables for specifications\n";
-    prompt += "- Bold text for important requirements\n\n";
-
-    // Add conversation history
-    messages.forEach(msg => {
-      if (msg.role === 'user') {
-        prompt += `Human: ${msg.content}\n\n`;
-      } else {
-        prompt += `Assistant: ${msg.content}\n\n`;
-      }
-    });
-
-    prompt += "Assistant: ";
-    return prompt;
+    // Simple concatenation for chat models
+    return messages.map(msg => `${msg.role}: ${msg.content}`).join('\n\n') + '\n\nAssistant: ';
   }
 
   async testConnection(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseURL}/api/tags`, {
-        method: 'GET',
+      const response = await fetch(`${this.baseURL}/api/chat`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          model: this.model,
+          messages: [{ role: 'user', content: 'test' }],
+        }),
       });
       return response.ok;
     } catch (error) {
@@ -152,6 +134,24 @@ export class OllamaService {
       console.error('Failed to get available models:', error);
       return [];
     }
+  }
+
+  // Getters for current settings
+  getBaseURL(): string {
+    return this.baseURL;
+  }
+
+  getModel(): string {
+    return this.model;
+  }
+
+  // Setters for updating settings
+  setBaseURL(url: string): void {
+    this.baseURL = url;
+  }
+
+  setModel(model: string): void {
+    this.model = model;
   }
 }
 

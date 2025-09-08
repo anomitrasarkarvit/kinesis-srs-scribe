@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { ChatPanel } from '@/components/ChatPanel';
-import { SRSPreview } from '@/components/SRSPreview';
+import  SRSPreview  from '@/components/SRSPreview';
 import { OllamaSettings } from '@/components/OllamaSettings';
 import { useOllamaChat } from '@/hooks/useOllamaChat';
 import { exportService } from '@/services/exportService';
