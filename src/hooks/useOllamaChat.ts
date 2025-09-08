@@ -92,18 +92,29 @@ export const useOllamaChat = () => {
 
       console.log('Streaming completed. Final response:', assistantResponse);
 
-      // Detect and extract SRS content
-      const srsMatch =
-        assistantResponse.match(/```markdown\n([\s\S]*?)\n```/) ||
-        assistantResponse.match(/(# System Requirements Specification[\s\S]*)/i);
+      // Detect and extract SRS content with better patterns
+      const srsPatterns = [
+        /```(?:markdown)?\s*([\s\S]*?)\s*```/i,  // Markdown code blocks
+        /(# [^#\n]*(?:SRS|System Requirements|Requirements Specification)[\s\S]*)/i,  // SRS headings
+        /(# [^#\n]*(?:Project|System|Software)[\s\S]*)/i,  // Project/System docs
+        /(## [^#\n]*(?:Requirements|Specification|Overview)[\s\S]*)/i,  // Requirements sections
+      ];
 
-      if (srsMatch) {
+      let extractedSRS = '';
+      for (const pattern of srsPatterns) {
+        const match = assistantResponse.match(pattern);
+        if (match) {
+          extractedSRS = (match[1] || match[0]).trim();
+          break;
+        }
+      }
+
+      if (extractedSRS) {
         setIsUpdatingSRS(true);
-        const extractedSRS = srsMatch[1] || srsMatch[0];
-        setSrsContent(extractedSRS.trim());
+        setSrsContent(extractedSRS);
         setIsUpdatingSRS(false);
       } else if (assistantResponse.includes('# ') || assistantResponse.includes('## ')) {
-        // Heuristic: looks like markdown
+        // Heuristic: looks like structured markdown
         setIsUpdatingSRS(true);
         setSrsContent(assistantResponse.trim());
         setIsUpdatingSRS(false);

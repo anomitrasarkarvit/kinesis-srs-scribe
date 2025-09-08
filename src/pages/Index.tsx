@@ -111,7 +111,7 @@ const Index = () => {
         </div>
 
         {/* Right Panel - SRS Preview */}
-        <div className="w-1/2 bg-background">
+        <div className="w-1/2 bg-background p-4">
           <SRSPreview
             content={srsContent}
             isUpdating={isUpdatingSRS}

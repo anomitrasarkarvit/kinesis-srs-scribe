@@ -54,9 +54,9 @@ Classification: Educational / Non-actionable — sensitive technical details red
       : 0;
 
   return (
-    <Card className="w-full max-w-4xl mx-auto border shadow-lg rounded-xl overflow-hidden">
-      <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 flex justify-between items-center">
-        <CardTitle className="text-lg font-bold">SRS Preview</CardTitle>
+    <Card className="h-full flex flex-col border border-border bg-card overflow-hidden">
+      <CardHeader className="bg-card border-b border-border p-4 flex justify-between items-center">
+        <CardTitle className="text-lg font-bold text-foreground">SRS Preview</CardTitle>
         <div className="flex space-x-2">
           <Button
             aria-label="Export as Markdown"
@@ -81,8 +81,8 @@ Classification: Educational / Non-actionable — sensitive technical details red
         </div>
       </CardHeader>
 
-      <CardContent className="p-4">
-        <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-blue-700 dark:prose-headings:text-blue-400 prose-a:text-purple-600 dark:prose-a:text-purple-400 overflow-y-auto max-h-[500px] border rounded-md p-4 bg-muted/20">
+      <CardContent className="p-4 flex-1 flex flex-col">
+        <div className="prose prose-sm max-w-none prose-headings:text-foreground prose-a:text-foreground prose-strong:text-foreground prose-code:text-foreground flex-1 overflow-y-auto border border-border rounded-md p-4 bg-muted/50">
           <ReactMarkdown
             components={{
               code({
@@ -95,20 +95,20 @@ Classification: Educational / Non-actionable — sensitive technical details red
                 className?: string;
                 children: React.ReactNode;
               }) {
-                return inline ? (
-                  <code
-                    className="bg-muted px-1 py-0.5 rounded text-sm font-mono"
-                    {...props}
-                  >
-                    {children}
-                  </code>
-                ) : (
-                  <pre className="bg-muted p-4 rounded-md text-sm font-mono overflow-x-auto">
-                    <code className={className} {...props}>
+                  return inline ? (
+                    <code
+                      className="bg-muted border border-border px-1 py-0.5 rounded text-sm font-mono text-foreground"
+                      {...props}
+                    >
                       {children}
                     </code>
-                  </pre>
-                );
+                  ) : (
+                    <pre className="bg-muted border border-border p-4 rounded-md text-sm font-mono overflow-x-auto">
+                      <code className={className} {...props}>
+                        {children}
+                      </code>
+                    </pre>
+                  );
               },
             }}
           >
